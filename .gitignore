@@ -1,0 +1,5 @@
+dataset/*/images
+runs
+dataset/insulator_yolo
+*.pt
+**/*.cache

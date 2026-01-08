@@ -1,0 +1,4 @@
+train: dataset/insulator_yolo/train
+val: dataset/insulator_yolo/val
+nc: 4
+names: ["ring_shifted", "nest", "broken", "burn"]
