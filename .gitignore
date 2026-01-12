@@ -5,3 +5,5 @@
 *.png
 *.bmp
 yolov11/yolo_data/
+yolov11/runs/
+*.pt
