@@ -5,17 +5,17 @@ os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 if __name__ == '__main__':
     # 加载官⽅预训练模型
     # 🔺 核心修改：从 n (Nano) 换成 s (Small) 模型，这是提升 mAP 的最强手段
-    model = YOLO("yolo11s.pt", task="detect") 
+    model = YOLO("yolo11n.pt", task="detect") 
     
     # 模型训练
     results = model.train(
         data="data.yaml", 
         # --- 1. 减少轮次 & 收紧早停 ---
-        epochs=150,      # s模型收敛稍慢，给到 150 轮
+        epochs=150,      
         patience=30,     # 耐心稍加一点
         
         batch=16, 
-        imgsz=640,       # 保持 640，防止过拟合
+        imgsz=1024,       # 保持 640，防止过拟合
         
         # --- 🚀 速度优化 ---
         workers=4,       
