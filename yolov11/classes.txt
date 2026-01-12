@@ -1,0 +1,4 @@
+ring_shifted
+nest
+broken
+burn

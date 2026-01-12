@@ -1,0 +1,7 @@
+# 忽略所有图片文件 (不区分大小写)
+*.jpg
+*.JPG
+*.jpeg
+*.png
+*.bmp
+yolov11/yolo_data/

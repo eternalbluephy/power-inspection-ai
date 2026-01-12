@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+python-multipart
+opencv-python
+numpy
+gradio
+requests
+ultralytics
+tqdm
+onnx
+onnxslim
+onnxruntime
+torch>=1.12.0
+torchvision

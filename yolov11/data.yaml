@@ -1,0 +1,4 @@
+train: C:\Users\wang\Documents\Learn\University\Power inspection project\power-inspection-ai\yolov11\yolo_data\train #此处修改为数据实际⽬录
+val: C:\Users\wang\Documents\Learn\University\Power inspection project\power-inspection-ai\yolov11\yolo_data\val #此处修改为数据实际⽬录
+nc: 4
+names: ["ring_shifted","nest","broken","burn"]
