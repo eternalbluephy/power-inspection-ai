@@ -28,8 +28,9 @@ env/
 # 后端构建/缓存产物
 backend/__pycache__/
 
-# 该目录本身是一个独立的 Git 仓库（含 backend/.git），如需管理请单独提交/推送
-backend/
+# 如果需要把 backend 从独立仓库合并进当前仓库，通常会临时备份 backend/.git
+backend/.git.bak/
+backend/.git.backup/
 
 # 编辑器目录与文件
 .vscode/*
