@@ -47,7 +47,6 @@ export default function VideoDetection() {
         backendTotalMs: null,
     });
 
-    // Refs for different sources
     const webcamRef = useRef<Webcam>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -61,7 +60,6 @@ export default function VideoDetection() {
     const lastJpegKBRef = useRef<number | null>(null);
     const lastSendStartRef = useRef<number | null>(null);
 
-    // const getMaxSendFps = () => (activeTab === 'screen' ? 10 : 60);
     const getMaxSendFps = () => 60;
     const scheduleNextCapture = () => {
         const socket = wsRef.current;
@@ -74,8 +72,6 @@ export default function VideoDetection() {
         const sinceLastStart = lastStart ? performance.now() - lastStart : minIntervalMs;
         const delay = Math.max(0, minIntervalMs - sinceLastStart);
 
-        // Avoid waiting for the next paint (rAF) here: we want throughput driven by
-        // encode + server RTT. The capture itself will check video readiness.
         if (delay <= 0) {
             queueMicrotask(captureFrame);
             return;
@@ -83,7 +79,6 @@ export default function VideoDetection() {
         window.setTimeout(captureFrame, delay);
     };
 
-    // Source dimensions for correct aspect ratio
     const [sourceDim, setSourceDim] = useState({ w: 1280, h: 720 });
 
     useEffect(() => {
@@ -115,27 +110,10 @@ export default function VideoDetection() {
         const { detections, image_size } = data;
         const width = canvas.width;
         const height = canvas.height;
-        // Use image_size from backend if available for normalization base (default 640?)
-        // Wait, backend returns size of the IMAGE IT PROCESSED.
-        // Frontend sends 640x640 frame. So backend returns image_size=[640, 640] and 640-based coordinates.
-        // Normalized check:
         const baseW = image_size ? image_size[0] : 1280;
         const baseH = image_size ? image_size[1] : 1280;
 
         detections.forEach((det: any) => {
-            // Map backend coordinates to canvas dimensions
-            // Backend now returns coordinates relative to the sent frame (e.g., 640x640).
-            // Canvas is displayed size (e.g. 1280x720, or whatever video element size is).
-            // Since input frame (640x640) was stretched from original video source,
-            // and backend returns non-stretched coordinates RELATIVE TO 640x640 frame.
-
-            // Actually wait: The captureFrame logic draws video (Aspect Ratio preserved? No, ctx.drawImage(video, 0,0, 640, 640))
-            // Standard drawImage fetches the intrinsic video frame and stretches it to 640x640.
-            // So the backend sees a SQUASHED 640x640 image if the video was 16:9.
-            // Backend returns boxes on that 640x640 SQUASHED image.
-            // Frontend receives 640-based coords.
-            // To draw on the original Aspect Ratio Canvas, we just need to normalize to (0-1) and scale to canvas.
-
             const x1 = (det.x1 / baseW) * width;
             const y1 = (det.y1 / baseH) * height;
             const x2 = (det.x2 / baseW) * width;
@@ -178,14 +156,12 @@ export default function VideoDetection() {
             const data = JSON.parse(event.data);
             drawDetections(data);
 
-            // 检测列表节流：避免每帧 setState 导致 UI 卡顿
             const now = performance.now();
             if (now - lastUiUpdateRef.current > 200) {
                 setDetections(data.detections || []);
                 lastUiUpdateRef.current = now;
             }
 
-            // 轻量统计：显示后端推理耗时与接收帧率（用于判断瓶颈在编码/传输还是推理）
             const prev = lastFrameTsRef.current;
             lastFrameTsRef.current = now;
             const frameGapMs = prev ? now - prev : null;
@@ -247,7 +223,6 @@ export default function VideoDetection() {
         setWs(null);
         if (videoRef.current) {
             videoRef.current.pause();
-            // Stop tracks if screen share
             if (activeTab === 'screen' && videoRef.current.srcObject) {
                 const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
                 tracks.forEach(track => track.stop());
@@ -278,7 +253,6 @@ export default function VideoDetection() {
         }
 
         if (videoSource) {
-            // Auto-sync canvas dimensions if video source size changes (e.g. screen share resize)
             const vw = videoSource.videoWidth;
             const vh = videoSource.videoHeight;
             if (vw === 0 || vh === 0) return;
@@ -286,17 +260,15 @@ export default function VideoDetection() {
                 setSourceDim({ w: vw, h: vh });
             }
 
-            // Keep aspect ratio while resizing, avoid stretching to square
             const maxSide = maxSideRef.current;
             const scale = Math.min(maxSide / vw, maxSide / vh, 1);
             tempCanvas.width = Math.round(vw * scale);
             tempCanvas.height = Math.round(vh * scale);
 
-            if (videoSource.readyState >= 2) { // HAVE_CURRENT_DATA
+            if (videoSource.readyState >= 2) {
                 const ctx = tempCanvas.getContext('2d');
                 if (ctx) {
                     ctx.drawImage(videoSource, 0, 0, tempCanvas.width, tempCanvas.height);
-                    // 关键：toBlob 是异步的，如果不提前标记 in-flight，会在编码期间重复进入 captureFrame，导致并发编码 + 卡顿
                     sendingRef.current = true;
                     lastSendStartRef.current = performance.now();
                     const encodeStart = performance.now();
@@ -322,8 +294,6 @@ export default function VideoDetection() {
 
     useEffect(() => {
         if (!isCapturing) return;
-        // Start the self-driven loop: each server response schedules the next capture,
-        // avoiding idle waits caused by setInterval jitter.
         scheduleNextCapture();
     }, [isCapturing, ws, activeTab]);
 
@@ -346,8 +316,6 @@ export default function VideoDetection() {
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
                 videoRef.current.play();
-                // Wait for metadata to set dim? 
-                // It will happen in onLoadedMetadata
                 startStream();
             }
         } catch (e) {
@@ -377,7 +345,6 @@ export default function VideoDetection() {
         }
     };
 
-    // For webcam, we know the constraints, but better to check
     const onWebcamUserMedia = (stream: MediaStream) => {
         const track = stream.getVideoTracks()[0];
         const settings = track.getSettings();
@@ -442,7 +409,6 @@ export default function VideoDetection() {
 
                         <div className="flex-1 min-h-[400px] lg:min-h-0 relative bg-black/90 rounded-lg overflow-hidden flex items-center justify-center border border-border/50 shadow-inner group">
 
-                            {/* Canvas Overlay: Matches source dimensions, scaled by CSS */}
                             <canvas
                                 ref={canvasRef}
                                 className="absolute inset-0 z-20 pointer-events-none w-full h-full object-contain"
@@ -481,7 +447,6 @@ export default function VideoDetection() {
                                     </div>
                                 )}
 
-                                {/* Controls */}
                                 {uploadHasVideo && (
                                     <div className="absolute bottom-6 z-30 flex gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <Button
@@ -506,7 +471,6 @@ export default function VideoDetection() {
                                                 if (uploadUrlRef.current) URL.revokeObjectURL(uploadUrlRef.current);
                                                 uploadUrlRef.current = null;
                                                 setUploadHasVideo(false);
-                                                // 每次清除 video.src 时清空检测列表，避免残留
                                                 setDetections([]);
                                                 if (fileInputRef.current) fileInputRef.current.value = "";
                                             }}

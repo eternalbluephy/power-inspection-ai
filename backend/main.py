@@ -34,7 +34,6 @@ _MODEL_IO_CACHE: dict[str, tuple[str, str, list[str]]] = {}
 def _get_model_io(model_name: str) -> tuple[str, str, list[str]]:
     """
     Returns: (input_name, input_datatype, output_names) from Triton model metadata.
-    Cached to avoid per-frame metadata RPCs.
     """
     if model_name in _MODEL_IO_CACHE:
         return _MODEL_IO_CACHE[model_name]
@@ -42,7 +41,6 @@ def _get_model_io(model_name: str) -> tuple[str, str, list[str]]:
         raise RuntimeError("Triton not connected")
 
     meta = triton_client.get_model_metadata(model_name=model_name)
-    # gRPC metadata object: meta.inputs / meta.outputs
     if not hasattr(meta, "inputs") or not meta.inputs:
         raise RuntimeError(f"Model {model_name} has no inputs in metadata")
 
@@ -73,7 +71,6 @@ def _maybe_denormalize_boxes(
     if boxes_xyxy.size == 0:
         return boxes_xyxy
 
-    # 若坐标均在 [0,1] 附近，认为是归一化坐标
     max_v = float(np.max(boxes_xyxy))
     if max_v <= 1.5:
         out = boxes_xyxy.copy()
@@ -93,7 +90,6 @@ def _ensure_xyxy(boxes: np.ndarray) -> np.ndarray:
     x1, y1, x2, y2 = boxes[:, 0], boxes[:, 1], boxes[:, 2], boxes[:, 3]
     invalid = np.mean((x2 < x1) | (y2 < y1))
     if invalid > 0.5:
-        # yxyx -> xyxy: [y1,x1,y2,x2] => [x1,y1,x2,y2]
         return boxes[:, [1, 0, 3, 2]]
     return boxes
 
@@ -134,7 +130,6 @@ def _parse_triton_ensemble_outputs(
     scores = scores[:n]
     classes = classes[:n]
 
-    # 过滤低置信度并限制 Top-K，避免视频流每帧 JSON 过大导致卡顿
     try:
         score_thres = float(os.getenv("TRITON_SCORE_THRES", "0.25"))
     except Exception:
@@ -162,7 +157,6 @@ def _parse_triton_ensemble_outputs(
         scores = scores[idx]
         classes = classes[idx]
 
-    # 允许通过环境变量强制指定 boxes 顺序（默认自动判断）
     box_order = os.getenv("TRITON_BOX_ORDER", "auto").lower().strip()
     if box_order == "yxyx":
         boxes = boxes[:, [1, 0, 3, 2]]
@@ -253,7 +247,6 @@ def _parse_triton_boxes_outputs(
         scores = scores[idx]
         classes = classes[idx]
 
-    # Handle possible normalized boxes and/or swapped order.
     box_order = os.getenv("TRITON_BOX_ORDER", "auto").lower().strip()
     if box_order == "yxyx":
         boxes = boxes[:, [1, 0, 3, 2]]
@@ -308,13 +301,10 @@ async def get_models():
     if not triton_client:
         return []
     try:
-        # Try to get models from Triton
         resp = triton_client.get_model_repository_index()
-        # gRPC: RepositoryIndexResponse(models=[...])
         if hasattr(resp, "models"):
             return [m.name for m in resp.models]
 
-        # Fallback: list[dict] (兼容可能的不同 client 版本)
         if isinstance(resp, list):
             out = []
             for m in resp:
@@ -327,7 +317,6 @@ async def get_models():
         return []
     except Exception as e:
         print(f"Error fetching models: {e}")
-        # Fallback for dev/testing
         return ["yolo_trt_model"]
 
 
@@ -339,10 +328,8 @@ def process_frame(image_bytes, model_name="yolo_trt_model"):
 
         t0 = time.perf_counter()
         if str(input_datatype).upper() == "BYTES":
-            # Forward JPEG bytes directly to Triton (preprocess moved into Triton ensemble).
-            # We still decode locally to get original width/height for UI scaling.
             nparr = np.frombuffer(image_bytes, np.uint8)
-            img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)  # BGR
+            img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
             if img is None:
                 return [], (0, 0), None
             t_decode = time.perf_counter()
@@ -352,7 +339,6 @@ def process_frame(image_bytes, model_name="yolo_trt_model"):
             inputs = [grpcclient.InferInput(input_name, inp.shape, "BYTES")]
             inputs[0].set_data_from_numpy(inp)
 
-            # Prefer requesting known detection outputs; otherwise request all outputs.
             prefer = ["num_dets", "boxes", "scores", "classes"]
             req = prefer if all(n in output_names for n in prefer) else output_names
             outputs = [grpcclient.InferRequestedOutput(n) for n in req]
@@ -376,9 +362,8 @@ def process_frame(image_bytes, model_name="yolo_trt_model"):
             }
             return detections, (original_w, original_h), timings
 
-        # Default path: local preprocess to FP32 tensor then infer.
         nparr = np.frombuffer(image_bytes, np.uint8)
-        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)  # BGR
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
         if img is None:
             return [], (0, 0), None
         t_decode = time.perf_counter()
@@ -420,7 +405,6 @@ def process_frame(image_bytes, model_name="yolo_trt_model"):
                 pad_y=pad_y,
             )
         else:
-            # Raw model output (e.g. "output") is not supported here.
             raise RuntimeError(
                 f"Model {model_name} does not expose ensemble outputs; got outputs={output_names}"
             )
@@ -461,15 +445,9 @@ async def detect_image(
 @app.websocket("/detect/stream")
 async def websocket_endpoint(websocket: WebSocket, model_name: str = "yolo_trt_model"):
     await websocket.accept()
-    # model_name is now populated from query param
     try:
-        # First message could be config
-        # But for simplicity assume stream of blobs
         while True:
             data = await websocket.receive_bytes()
-
-            # Check if it's a config message (text) or image (bytes) is tricky if relying on types
-            # But receive_bytes matches binary.
 
             start = time.time()
             detections, size, timings = process_frame(data, model_name)

@@ -38,12 +38,10 @@ export function useDetectionCanvas(
         const { offsetWidth, offsetHeight } = container;
         if (offsetWidth <= 0 || offsetHeight <= 0) return;
 
-        // Fit image into container (contain).
         const scale = Math.min(offsetWidth / naturalSize.w, offsetHeight / naturalSize.h);
         const displayWidth = Math.max(1, Math.round(naturalSize.w * scale));
         const displayHeight = Math.max(1, Math.round(naturalSize.h * scale));
 
-        // Render at display resolution (with DPR), so we don't depend on CSS scaling behavior.
         const dpr = window.devicePixelRatio || 1;
         canvas.style.width = `${displayWidth}px`;
         canvas.style.height = `${displayHeight}px`;
@@ -52,7 +50,6 @@ export function useDetectionCanvas(
 
         const renderSeq = ++renderSeqRef.current;
 
-        // Clear
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -62,13 +59,11 @@ export function useDetectionCanvas(
         const draw = () => {
             if (renderSeq !== renderSeqRef.current) return;
 
-            // Map drawing to CSS pixels.
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
             ctx.clearRect(0, 0, displayWidth, displayHeight);
 
             ctx.drawImage(img, 0, 0, displayWidth, displayHeight);
 
-            // Draw Detections (detections are in original (natural) pixel coords)
             const sx = displayWidth / naturalSize.w;
             const sy = displayHeight / naturalSize.h;
 
@@ -102,7 +97,6 @@ export function useDetectionCanvas(
         };
 
         img.onload = () => draw();
-        // If already cached/loaded, onload might not fire in some cases.
         if (img.complete && img.naturalWidth > 0) draw();
 
     }, [imageSrc, detections, naturalSize, containerRef]);

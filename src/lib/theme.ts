@@ -1,4 +1,3 @@
-// src/theme.js (or similar logic in App)
 export type ThemeMode = "light" | "dark" | "system";
 
 export const applyTheme = (theme: ThemeMode) => {

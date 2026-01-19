@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:5000'; // Make sure this matches your backend
+const API_BASE_URL = 'http://localhost:5000';
 
 export const api = {
     getModels: async () => {
@@ -19,7 +19,6 @@ export const api = {
         return response.data;
     },
     getStreamUrl: (modelName: string) => {
-        // For WebSocket, we don't fetch, just return URL
         return `ws://localhost:5000/detect/stream?model_name=${modelName}`;
     }
 };
