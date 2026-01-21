@@ -1,0 +1,14 @@
+name: "insulator_yolo_640"
+platform: "tensorrt_plan"
+max_batch_size: 8
+
+input [
+  { name: "images" data_type: TYPE_FP32 dims: [ 3, 640, 640 ] }
+]
+
+# 如果你的输出是 (8400,68)（4类 + DFL16），就这样：
+output [
+  { name: "output" data_type: TYPE_FP32 dims: [ 8400, 68 ] }
+]
+
+instance_group [{ kind: KIND_GPU, count: 1 }]

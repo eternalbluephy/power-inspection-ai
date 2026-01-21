@@ -1,0 +1,20 @@
+name: "insulator_yolo_post"
+backend: "python"
+max_batch_size: 0
+
+input [
+  { name: "output" data_type: TYPE_FP32 dims: [ 1, 33600, 68 ] }
+]
+
+output [
+  { name: "num_dets" data_type: TYPE_INT32 dims: [ 1 ] },
+  { name: "boxes"    data_type: TYPE_FP32 dims: [ 300, 4 ] },
+  { name: "scores"   data_type: TYPE_FP32 dims: [ 300 ] },
+  { name: "classes"  data_type: TYPE_INT32 dims: [ 300 ] }
+]
+
+parameters: { key: "conf_thres" value: { string_value: "0.25" } }
+parameters: { key: "iou_thres"  value: { string_value: "0.45" } }
+parameters: { key: "max_det"    value: { string_value: "300"  } }
+parameters: { key: "topk"       value: { string_value: "1000" } }
+

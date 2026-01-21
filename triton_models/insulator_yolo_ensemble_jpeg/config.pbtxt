@@ -1,0 +1,42 @@
+name: "insulator_yolo_ensemble_jpeg"
+platform: "ensemble"
+max_batch_size: 0
+
+input [
+  { name: "jpeg" data_type: TYPE_STRING dims: [ 1 ] }
+]
+
+output [
+  { name: "num_dets" data_type: TYPE_INT32 dims: [ 1 ] },
+  { name: "boxes"    data_type: TYPE_FP32 dims: [ 300, 4 ] },
+  { name: "scores"   data_type: TYPE_FP32 dims: [ 300 ] },
+  { name: "classes"  data_type: TYPE_INT32 dims: [ 300 ] }
+]
+
+ensemble_scheduling {
+  step [
+    {
+      model_name: "insulator_yolo_pre"
+      model_version: -1
+      input_map  { key: "jpeg" value: "jpeg" }
+      output_map { key: "images" value: "images" }
+      output_map { key: "meta"   value: "meta" }
+    },
+    {
+      model_name: "insulator_yolo"
+      model_version: -1
+      input_map  { key: "images" value: "images" }
+      output_map { key: "output" value: "raw_output" }
+    },
+    {
+      model_name: "insulator_yolo_post_orig"
+      model_version: -1
+      input_map  { key: "output" value: "raw_output" }
+      input_map  { key: "meta"   value: "meta" }
+      output_map { key: "num_dets" value: "num_dets" }
+      output_map { key: "boxes"    value: "boxes" }
+      output_map { key: "scores"   value: "scores" }
+      output_map { key: "classes"  value: "classes" }
+    }
+  ]
+}

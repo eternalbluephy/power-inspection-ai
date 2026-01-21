@@ -1,0 +1,15 @@
+name: "insulator_yolo_post_orig_640"
+backend: "python"
+max_batch_size: 0
+
+input [
+  { name: "output" data_type: TYPE_FP32 dims: [ 1, 8400, 68 ] },
+  { name: "meta"   data_type: TYPE_FP32 dims: [ 1, 5 ] }
+]
+
+output [
+  { name: "num_dets" data_type: TYPE_INT32 dims: [ 1 ] },
+  { name: "boxes"    data_type: TYPE_FP32 dims: [ 300, 4 ] },
+  { name: "scores"   data_type: TYPE_FP32 dims: [ 300 ] },
+  { name: "classes"  data_type: TYPE_INT32 dims: [ 300 ] }
+]
