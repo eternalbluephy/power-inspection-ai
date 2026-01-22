@@ -8,15 +8,18 @@ def main():
     model = YOLO("yolo11n.pt", task="detect")
     results = model.train(
         data="data.yaml",
-        epochs=100,
-        batch=32,
+        epochs=150,
+        batch=64,
         imgsz=640,
         device=0,
-        workers=12,
+        workers=4,
         seed=42,
         pretrained=True,
-        cache=True,
+        cache=False,
         verbose=True,
+        hsv_h=0.015,
+        mosaic=1.0,
+        close_mosaic=20,
     )
     print(results)
 
